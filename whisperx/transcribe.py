@@ -161,7 +161,7 @@ def cli():
     if args["max_line_count"] and not args["max_line_width"]:
         warnings.warn("--max_line_count has no effect without --max_line_width")
     writer_args = {arg: args.pop(arg) for arg in word_options}
-    
+
     # Part 1: VAD & ASR Loop
     results = []
     tmp_results = []
@@ -187,12 +187,7 @@ def cli():
         align_model, align_metadata = load_align_model(align_language, device, model_name=align_model)
         for result, audio_path in tmp_results:
             # >> Align
-            if len(tmp_results) > 1:
-                input_audio = audio_path
-            else:
-                # lazily load audio from part 1
-                input_audio = audio
-
+            input_audio = audio_path if len(tmp_results) > 1 else audio
             if align_model is not None and len(result["segments"]) > 0:
                 if result.get("language", "en") != align_metadata["language"]:
                     # load new language

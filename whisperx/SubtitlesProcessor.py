@@ -3,9 +3,7 @@ from conjunctions import get_conjunctions, get_comma
 from typing import TextIO
 
 def normal_round(n):
-    if n - math.floor(n) < 0.5:
-        return math.floor(n)
-    return math.ceil(n)
+    return math.floor(n) if n - math.floor(n) < 0.5 else math.ceil(n)
 
 
 def format_timestamp(seconds: float, is_vtt: bool = False):
@@ -54,23 +52,21 @@ class SubtitlesProcessor:
             words[i]['start'] = words[i - 1]['end']
             if has_next_start:
                 words[i]['end'] = words[i + 1]['start']
+            elif next_segment_start_time:
+                words[i]['end'] = next_segment_start_time if next_segment_start_time - words[i - 1]['end'] <= 1 else next_segment_start_time - 0.5
             else:
-                if next_segment_start_time:
-                    words[i]['end'] = next_segment_start_time if next_segment_start_time - words[i - 1]['end'] <= 1 else next_segment_start_time - 0.5
-                else:
-                    words[i]['end'] = words[i]['start'] + len(words[i]['word']) * k
+                words[i]['end'] = words[i]['start'] + len(words[i]['word']) * k
 
         elif has_next_start:
             words[i]['start'] = words[i + 1]['start'] - len(words[i]['word']) * k
             words[i]['end'] = words[i + 1]['start']
 
+        elif next_segment_start_time:
+            words[i]['start'] = next_segment_start_time - 1
+            words[i]['end'] = next_segment_start_time - 0.5
         else:
-            if next_segment_start_time:
-                words[i]['start'] = next_segment_start_time - 1
-                words[i]['end'] = next_segment_start_time - 0.5
-            else:
-                words[i]['start'] = 0
-                words[i]['end'] = 0
+            words[i]['start'] = 0
+            words[i]['end'] = 0
 
 
 

@@ -33,7 +33,7 @@ class WhisperModel(faster_whisper.WhisperModel):
         all_tokens = []
         prompt_reset_since = 0
         if options.initial_prompt is not None:
-            initial_prompt = " " + options.initial_prompt.strip()
+            initial_prompt = f" {options.initial_prompt.strip()}"
             initial_prompt_tokens = tokenizer.encode(initial_prompt)
             all_tokens.extend(initial_prompt_tokens)
         previous_tokens = all_tokens[prompt_reset_since:]
@@ -116,18 +116,18 @@ class FasterWhisperPipeline(Pipeline):
         self._preprocess_params, self._forward_params, self._postprocess_params = self._sanitize_parameters(**kwargs)
         self.call_count = 0
         self.framework = framework
-        if self.framework == "pt":
-            if isinstance(device, torch.device):
-                self.device = device
-            elif isinstance(device, str):
-                self.device = torch.device(device)
-            elif device < 0:
-                self.device = torch.device("cpu")
-            else:
-                self.device = torch.device(f"cuda:{device}")
-        else:
+        if (
+            self.framework == "pt"
+            and isinstance(device, torch.device)
+            or self.framework != "pt"
+        ):
             self.device = device
-
+        elif isinstance(device, str):
+            self.device = torch.device(device)
+        elif device < 0:
+            self.device = torch.device("cpu")
+        else:
+            self.device = torch.device(f"cuda:{device}")
         super(Pipeline, self).__init__()
         self.vad_model = vad
         self._vad_params = vad_params

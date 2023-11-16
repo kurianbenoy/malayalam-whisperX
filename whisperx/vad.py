@@ -157,22 +157,18 @@ class Binarize:
                         start = curr_timestamps[min_score_div_idx]
                         curr_scores = curr_scores[min_score_div_idx+1:]
                         curr_timestamps = curr_timestamps[min_score_div_idx+1:]
-                    # switching from active to inactive
                     elif y < self.offset:
                         region = Segment(start - self.pad_onset, t + self.pad_offset)
                         active[region, k] = label
-                        start = t
                         is_active = False
                         curr_scores = []
+                        start = t
                         curr_timestamps = []
                     curr_scores.append(y)
                     curr_timestamps.append(t)
-                # currently inactive
-                else:
-                    # switching from inactive to active
-                    if y > self.onset:
-                        start = t
-                        is_active = True
+                elif y > self.onset:
+                    start = t
+                    is_active = True
 
             # if active at the end, add final region
             if is_active:
@@ -183,7 +179,7 @@ class Binarize:
         # also: fill same speaker gaps shorter than min_duration_off
         if self.pad_offset > 0.0 or self.pad_onset > 0.0 or self.min_duration_off > 0.0:
             if self.max_duration < float("inf"):
-                raise NotImplementedError(f"This would break current max_duration param")
+                raise NotImplementedError("This would break current max_duration param")
             active = active.support(collar=self.min_duration_off)
 
         # remove tracks shorter than min_duration_on
@@ -250,16 +246,15 @@ def merge_vad(vad_arr, pad_onset=0.0, pad_offset=0.0, min_duration_off=0.0, min_
 
     if pad_offset > 0.0 or pad_onset > 0.0 or min_duration_off > 0.0:
         active = active.support(collar=min_duration_off)
-    
+
     # remove tracks shorter than min_duration_on
     if min_duration_on > 0:
         for segment, track in list(active.itertracks()):
             if segment.duration < min_duration_on:
                     del active[segment, track]
-    
+
     active = active.for_json()
-    active_segs = pd.DataFrame([x['segment'] for x in active['content']])
-    return active_segs
+    return pd.DataFrame([x['segment'] for x in active['content']])
 
 def merge_chunks(
     segments,
@@ -278,11 +273,11 @@ def merge_chunks(
     assert chunk_size > 0
     binarize = Binarize(max_duration=chunk_size, onset=onset, offset=offset)
     segments = binarize(segments)
-    segments_list = []
-    for speech_turn in segments.get_timeline():
-        segments_list.append(SegmentX(speech_turn.start, speech_turn.end, "UNKNOWN"))
-
-    if len(segments_list) == 0:
+    segments_list = [
+        SegmentX(speech_turn.start, speech_turn.end, "UNKNOWN")
+        for speech_turn in segments.get_timeline()
+    ]
+    if not segments_list:
         print("No active speech found in audio")
         return []
     # assert segments_list, "segments_list is empty."
@@ -307,5 +302,5 @@ def merge_chunks(
                 "start": curr_start,
                 "end": curr_end,
                 "segments": seg_idxs,
-            })    
+            })
     return merged_segments
