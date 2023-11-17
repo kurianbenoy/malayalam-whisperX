@@ -30,7 +30,7 @@ print(result["segments"]) # before alignment
 # import gc; gc.collect(); torch.cuda.empty_cache(); del model
 
 # 2. Align whisper output
-model_a, metadata = whisperx.load_align_model(language_code=result["language"], device=device)
+model_a, metadata = whisperx.load_align_model(language_code="ml", device=device)
 result = whisperx.align(result["segments"], model_a, metadata, audio, device, return_char_alignments=False)
 
 print(result["segments"]) # after alignment
