@@ -2,6 +2,12 @@
 
 - Fork of whisperX to support Malayalam
 
+## Installation
+
+```
+pip install git+https://github.com/kurianbenoy/malayalam-whisperX.git
+```
+
 ## Python usage  🐍
 
 ```python
