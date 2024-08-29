@@ -7,8 +7,7 @@ from setuptools import setup, find_packages
 def get_pyannote_audio_version():
     machine = platform.machine()
     system = platform.system()
-    version = "3.0.0" if machine == "aarch64" or system == "Darwin" else "3.0.1"
-    return version
+    return "3.0.0" if machine == "aarch64" or system == "Darwin" else "3.0.1"
 
 
 setup(

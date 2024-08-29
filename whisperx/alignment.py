@@ -80,7 +80,9 @@ def load_align_model(language_code, device, model_name=None, model_dir=None):
             align_model = Wav2Vec2ForCTC.from_pretrained(model_name)
         except Exception as e:
             print(e)
-            print(f"Error loading model from huggingface, check https://huggingface.co/models for finetuned wav2vec2.0 models")
+            print(
+                "Error loading model from huggingface, check https://huggingface.co/models for finetuned wav2vec2.0 models"
+            )
             raise ValueError(f'The chosen align_model "{model_name}" could not be found in huggingface (https://huggingface.co/models) or torchaudio (https://pytorch.org/audio/stable/pipelines.html#id14)')
         pipeline_type = "huggingface"
         align_model = align_model.to(device)
@@ -113,7 +115,7 @@ def align(
         audio = torch.from_numpy(audio)
     if len(audio.shape) == 1:
         audio = audio.unsqueeze(0)
-    
+
     MAX_DURATION = audio.shape[1] / SAMPLE_RATE
 
     model_dictionary = align_model_metadata["dictionary"]
@@ -128,24 +130,20 @@ def align(
             base_progress = ((sdx + 1) / total_segments) * 100
             percent_complete = (50 + base_progress / 2) if combined_progress else base_progress
             print(f"Progress: {percent_complete:.2f}%...")
-            
+
         num_leading = len(segment["text"]) - len(segment["text"].lstrip())
         num_trailing = len(segment["text"]) - len(segment["text"].rstrip())
         text = segment["text"]
 
         # split into words
-        if model_lang not in LANGUAGES_WITHOUT_SPACES:
-            per_word = text.split(" ")
-        else:
-            per_word = text
-
+        per_word = text if model_lang in LANGUAGES_WITHOUT_SPACES else text.split(" ")
         clean_char, clean_cdx = [], []
         for cdx, char in enumerate(text):
             char_ = char.lower()
             # wav2vec2 models use "|" character to represent spaces
             if model_lang not in LANGUAGES_WITHOUT_SPACES:
                 char_ = char_.replace(" ", "|")
-            
+
             # ignore whitespace at beginning and end of transcript
             if cdx < num_leading:
                 pass
@@ -155,12 +153,11 @@ def align(
                 clean_char.append(char_)
                 clean_cdx.append(cdx)
 
-        clean_wdx = []
-        for wdx, wrd in enumerate(per_word):
-            if any([c in model_dictionary.keys() for c in wrd]):
-                clean_wdx.append(wdx)
-
-                
+        clean_wdx = [
+            wdx
+            for wdx, wrd in enumerate(per_word)
+            if any(c in model_dictionary.keys() for c in wrd)
+        ]
         punkt_param = PunktParameters()
         punkt_param.abbrev_types = set(PUNKT_ABBREVIATIONS)
         sentence_splitter = PunktSentenceTokenizer(punkt_param)
@@ -170,9 +167,9 @@ def align(
         segment["clean_cdx"] = clean_cdx
         segment["clean_wdx"] = clean_wdx
         segment["sentence_spans"] = sentence_spans
-    
+
     aligned_segments: List[SingleAlignedSegment] = []
-    
+
     # 2. Get prediction matrix from alignment model & align
     for sdx, segment in enumerate(transcript):
         
@@ -217,7 +214,7 @@ def align(
             )
         else:
             lengths = None
-            
+
         with torch.inference_mode():
             if model_type == "torchaudio":
                 emissions, _ = model(waveform_segment.to(device), lengths=lengths)
@@ -231,7 +228,7 @@ def align(
 
         blank_id = 0
         for char, code in model_dictionary.items():
-            if char == '[pad]' or char == '<pad>':
+            if char in ['[pad]', '<pad>']:
                 blank_id = code
 
         trellis = get_trellis(emission, tokens, blank_id)
@@ -273,7 +270,7 @@ def align(
                 word_idx += 1
             elif cdx == len(text) - 1 or text[cdx+1] == " ":
                 word_idx += 1
-            
+
         char_segments_arr = pd.DataFrame(char_segments_arr)
 
         aligned_subsegments = []
@@ -282,7 +279,7 @@ def align(
         for sdx, (sstart, send) in enumerate(segment["sentence_spans"]):
             curr_chars = char_segments_arr.loc[(char_segments_arr.index >= sstart) & (char_segments_arr.index <= send)]
             char_segments_arr.loc[(char_segments_arr.index >= sstart) & (char_segments_arr.index <= send), "sentence-idx"] = sdx
-        
+
             sentence_text = text[sstart:send]
             sentence_start = curr_chars["start"].min()
             end_chars = curr_chars[curr_chars["char"] != ' ']
@@ -292,7 +289,7 @@ def align(
             for word_idx in curr_chars["word-idx"].unique():
                 word_chars = curr_chars.loc[curr_chars["word-idx"] == word_idx]
                 word_text = "".join(word_chars["char"].tolist()).strip()
-                if len(word_text) == 0:
+                if not word_text:
                     continue
 
                 # dont use space character for alignment
@@ -313,7 +310,7 @@ def align(
                     word_segment["score"] = word_score
 
                 sentence_words.append(word_segment)
-            
+
             aligned_subsegments.append({
                 "text": sentence_text,
                 "start": sentence_start,
